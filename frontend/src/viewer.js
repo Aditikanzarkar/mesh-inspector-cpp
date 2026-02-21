@@ -31,6 +31,7 @@ export function createViewer(container) {
   scene.add(grid);
 
   let mesh = null;
+  let triangleEdges = null;
   const loader = new STLLoader();
 
   function setMeshFromArrayBuffer(buffer) {
@@ -43,6 +44,11 @@ export function createViewer(container) {
       mesh.geometry.dispose();
       mesh.material.dispose();
     }
+    if (triangleEdges) {
+      scene.remove(triangleEdges);
+      triangleEdges.geometry.dispose();
+      triangleEdges.material.dispose();
+    }
 
     const material = new THREE.MeshStandardMaterial({
       color: 0x7ab7ff,
@@ -51,13 +57,30 @@ export function createViewer(container) {
     });
 
     mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = 0;
+    
+    // ---- TRIANGLE EDGES ----
+
+    const wireframe = new THREE.WireframeGeometry(geometry);
+
+    const edgeMaterial = new THREE.LineBasicMaterial({
+      color: 0xff0000,      // make it obvious
+      opacity: 1,
+      depthTest: false,     // VERY IMPORTANT
+      depthWrite: false,
+    });
+    
+    triangleEdges = new THREE.LineSegments(wireframe, edgeMaterial);
+    triangleEdges.renderOrder = 1;   // force draw after mesh
+    triangleEdges.position.copy(mesh.position);
+    
+    scene.add(triangleEdges);
+    scene.add(mesh);
 
     const box = geometry.boundingBox;
     const center = new THREE.Vector3();
     box.getCenter(center);
     mesh.position.sub(center);
-
-    scene.add(mesh);
 
     const size = box.getSize(new THREE.Vector3()).length() || 1;
     camera.position.set(size, size, size);
