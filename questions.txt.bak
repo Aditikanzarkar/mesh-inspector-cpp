@@ -1,0 +1,79 @@
+What problems you faced this projects? How you solved them
+  1. Reading stl files. STL files is always 50 bytes for each triangle but creating it's struct makes it 52 bytes due to padding.
+  So if you make struct like this
+  struct Triangle {
+    float normal[3];   // 12
+    float v1[3];       // 12
+    float v2[3];       // 12
+    float v3[3];       // 12
+    uint16_t attr;     // 2
+  };
+  and fill this struct using
+    file.read(reinterpret_cast<char*>(&t), sizeof(Triangle));
+  then it will read 52 bytes into file instead of 50.
+
+
+Q. what is stl? what exactly does it store?
+  It stores triangles only. 3 vertices and 1 normal. No topology. No units. No connectivity nothing very basic.
+    Q. Why normal?
+    A => Historical. Old machines did not have computer power to compute it again. Today's machine can.
+    Q. From 3 points you can define a plane but that plane can have two normals in opposite direction. How do you find then inside and outside of surface?
+    A => Winding Order Decides the Direction. 
+          If vertices are ordered:
+          Counter-clockwise (CCW) → normal points outward (by convention)
+          Clockwise (CW) → normal points inward
+          So orientation is not random — it depends on ordering.
+
+Q. Types of STL ASCII vs Binary STL?
+  ASCII STL: Human-readable text format.
+  Binary STL: Much more compact and faster. (Most common)
+    [80 bytes]   Header
+    [4 bytes]    Number of triangles (uint32)
+    [50 bytes]   Triangle 1
+    [50 bytes]   Triangle 2
+
+    So ideal parser design:
+      1. Read 80 bytes header
+      2. Read uint32 count
+      3. Reserve vector capacity
+      4. Loop read 50 bytes per triangle
+      For large files (millions of triangles):
+      1. Use memory mapping (mmap)
+      2. Or bulk read into buffer
+
+Q. What is the difference between triangle mesh (STL) and B-Rep modeling?
+A =>  A collection of flat triangles
+      Faces (surfaces), Edges (curves), Vertices (points). Easy to edit parametrically. It's needed for boolean operation.
+
+
+<<My intention of this project was to see how to work if I use it upto 1M triangles.
+How can I optimize storage and processing other heavy lifting of UI and parsing stl is done by LLM>>
+
+How do you compute surface area of a triangle mesh?
+Why does the cross product magnitude give triangle area?
+
+How do you compute volume of a closed mesh?
+Why does the signed tetrahedron method work?
+What happens if the mesh is not closed (not watertight)?
+What happens if triangle winding is inconsistent?
+<<For simplicity right now I have used STL which is water tight>>
+
+Float vs Double — what did you use and why?
+What numerical issues arise when coordinates are very large (1e6 scale)?
+How do you reduce floating-point accumulation error in volume summation?
+
+Time complexity of your area and volume computation?
+What is the memory footprint of 1M triangles?
+    Example thinking:
+    Each triangle:
+      3 vertices. Each vertex = 3 doubles (8 bytes each) = 3 × 3 × 8 = 72 bytes
+      normal (3 doubles = 24 bytes)
+      Total: ~96 bytes per triangle
+    1M triangles ≈ 96 MB
+    So if you store all the in vector and vector gets full. How that works? (how vector grows internally?)
+    Where this memory is stored. In RAM? how much RAM would it takes at 10M then?
+
+How would you scale this to 10M triangles?
+  Streaming, Memory mapping, Parallelization
+
+
