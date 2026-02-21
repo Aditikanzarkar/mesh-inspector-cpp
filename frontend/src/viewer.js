@@ -22,12 +22,6 @@ export function createViewer(container) {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
 
-  console.log('[viewer] init', {
-    clientWidth: container.clientWidth,
-    clientHeight: container.clientHeight,
-    rect: container.getBoundingClientRect?.(),
-  });
-
   scene.add(new THREE.AmbientLight(0xffffff, 0.65));
   const light = new THREE.DirectionalLight(0xffffff, 0.85);
   light.position.set(3, 5, 2);
@@ -40,7 +34,6 @@ export function createViewer(container) {
   const loader = new STLLoader();
 
   function setMeshFromArrayBuffer(buffer) {
-    console.log('[viewer] parsing STL', { bytes: buffer.byteLength });
     const geometry = loader.parse(buffer);
     geometry.computeVertexNormals();
     geometry.computeBoundingBox();
@@ -70,10 +63,6 @@ export function createViewer(container) {
     camera.position.set(size, size, size);
     controls.target.set(0, 0, 0);
     controls.update();
-
-    const pos = geometry.getAttribute?.('position');
-    const triCount = pos ? Math.floor(pos.count / 3) : null;
-    console.log('[viewer] loaded geometry', { triCount, size });
   }
 
   function onResize() {
@@ -84,16 +73,16 @@ export function createViewer(container) {
     renderer.setSize(clientWidth, clientHeight);
   }
 
-  window.addEventListener('resize', onResize);
-  const ro = new ResizeObserver(onResize);
-  ro.observe(container);
-  queueMicrotask(onResize);
-
   function animate() {
     controls.update();
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
   }
+
+  window.addEventListener('resize', onResize);
+  const ro = new ResizeObserver(onResize);
+  ro.observe(container);
+  queueMicrotask(onResize);
 
   animate();
 

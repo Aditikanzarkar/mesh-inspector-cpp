@@ -5,12 +5,6 @@ import { setStatus } from './ui.js';
 const viewerEl = document.getElementById('viewer');
 const inputEl = document.getElementById('stl-input');
 
-console.log('[main] boot', {
-  viewerEl: !!viewerEl,
-  inputEl: !!inputEl,
-  viewerRect: viewerEl?.getBoundingClientRect?.(),
-});
-
 const viewer = createViewer(viewerEl);
 
 bindUploader(
@@ -20,9 +14,8 @@ bindUploader(
     try {
       viewer.setMeshFromArrayBuffer(buffer);
       setStatus(`Loaded: ${name}`);
-    } catch (err) {
-      console.error('[main] setMesh failed', err);
-      setStatus('Failed to parse STL (see Console).');
+    } catch {
+      setStatus('Failed to parse STL.');
     }
   },
   () => setStatus('Failed to load STL file.')
