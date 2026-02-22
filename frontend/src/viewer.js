@@ -74,7 +74,7 @@ export function createViewer(container) {
     triangleEdges.renderOrder = 1;   // force draw after mesh
     triangleEdges.position.copy(mesh.position);
     
-    scene.add(triangleEdges);
+    //scene.add(triangleEdges);
     scene.add(mesh);
 
     const box = geometry.boundingBox;

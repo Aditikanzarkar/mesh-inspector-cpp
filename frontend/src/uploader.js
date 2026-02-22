@@ -5,7 +5,7 @@ export function bindUploader(inputEl, onFile, onError) {
 
     try {
       const buffer = await file.arrayBuffer();
-      onFile(buffer, file.name);
+      onFile(buffer, file.name, file);
     } catch (err) {
       onError?.(err);
     }

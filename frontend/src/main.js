@@ -1,21 +1,33 @@
+import { fetchMeshMetrics } from './api.js';
 import { createViewer } from './viewer.js';
 import { bindUploader } from './uploader.js';
-import { setStatus } from './ui.js';
+import { setMetrics, setStatus } from './ui.js';
 
 const viewerEl = document.getElementById('viewer');
 const inputEl = document.getElementById('stl-input');
 
 const viewer = createViewer(viewerEl);
+setMetrics(null);
 
 bindUploader(
   inputEl,
-  (buffer, name) => {
+  async (buffer, name, file) => {
     setStatus(`Loading: ${name}`);
+    setMetrics(null);
+
     try {
       viewer.setMeshFromArrayBuffer(buffer);
-      setStatus(`Loaded: ${name}`);
     } catch {
       setStatus('Failed to parse STL.');
+      return;
+    }
+
+    try {
+      const metrics = await fetchMeshMetrics(file);
+      setMetrics(metrics);
+      setStatus(`Loaded: ${name}`);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Failed to compute metrics.');
     }
   },
   () => setStatus('Failed to load STL file.')

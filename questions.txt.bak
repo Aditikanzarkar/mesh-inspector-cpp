@@ -54,7 +54,7 @@ A =>  A collection of flat triangles
       Faces (surfaces), Edges (curves), Vertices (points). Easy to edit parametrically. It's needed for boolean operation.
 
 
-<<My intention of this project was to see how to work if I use it upto 1M triangles.
+<<My intention of this project was to see how it would work if I use it upto 10M triangles.
 How can I optimize storage and processing other heavy lifting of UI and parsing stl is done by LLM>>
 
 Q. How do you compute surface area of a triangle mesh? Why does the cross product magnitude give triangle area?
@@ -85,7 +85,8 @@ What is the memory footprint of 1M triangles?
     So if you store all the in vector and vector gets full. How that works? (how vector grows internally?)
     Where this memory is stored. In RAM? how much RAM would it takes at 10M then?
 
-How would you scale this to 10M triangles?
+How would you scale this to 100M triangles?
   Streaming, Memory mapping, Parallelization
 
-
+why have you picked this project at this time time?
+what you learned about c++ vector can break
