@@ -84,6 +84,9 @@ export function createViewer(container) {
 
     const size = box.getSize(new THREE.Vector3()).length() || 1;
     camera.position.set(size, size, size);
+    camera.near = size / 100;
+    camera.far = size * 10;
+    camera.updateProjectionMatrix();
     controls.target.set(0, 0, 0);
     controls.update();
   }

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "core/Triangle.h"
+#include "geometry/AreaCalculator.h"
 #include "parser/STLParser.h"
 
 namespace {
@@ -23,18 +24,21 @@ int main(int argc, char* argv[]) {
 
     try {
         const std::vector<Triangle> triangles = STLParser::parseFile(filePath);
+        const double area = AreaCalculator::totalArea(triangles);
 
         std::cout << std::fixed << std::setprecision(6);
-        for (std::size_t i = 0; i < triangles.size(); ++i) {
-            const Triangle& t = triangles[i];
-            std::cout << "triangle " << (i + 1) << ": ";
-            printVertex(t.v1);
-            std::cout << " | ";
-            printVertex(t.v2);
-            std::cout << " | ";
-            printVertex(t.v3);
-            std::cout << '\n';
-        }
+        std::cout << "triangles: " << triangles.size() << '\n';
+        std::cout << "total area: " << area << '\n';
+        // for (std::size_t i = 0; i < triangles.size(); ++i) {
+        //     const Triangle& t = triangles[i];
+        //     std::cout << "triangle " << (i + 1) << ": ";
+        //     printVertex(t.v1);
+        //     std::cout << " | ";
+        //     printVertex(t.v2);
+        //     std::cout << " | ";
+        //     printVertex(t.v3);
+        //     std::cout << '\n';
+        // }
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << '\n';
         return 1;

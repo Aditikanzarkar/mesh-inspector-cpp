@@ -1,16 +1,24 @@
 What problems you faced this projects? How you solved them
   1. Reading stl files. STL files is always 50 bytes for each triangle but creating it's struct makes it 52 bytes due to padding.
-  So if you make struct like this
-  struct Triangle {
-    float normal[3];   // 12
-    float v1[3];       // 12
-    float v2[3];       // 12
-    float v3[3];       // 12
-    uint16_t attr;     // 2
-  };
-  and fill this struct using
-    file.read(reinterpret_cast<char*>(&t), sizeof(Triangle));
-  then it will read 52 bytes into file instead of 50.
+      So if you make struct like this
+      struct Triangle {
+        float normal[3];   // 12
+        float v1[3];       // 12
+        float v2[3];       // 12
+        float v3[3];       // 12
+        uint16_t attr;     // 2
+      };
+      and fill this struct using
+        file.read(reinterpret_cast<char*>(&t), sizeof(Triangle));
+      then it will read 52 bytes into file instead of 50.
+  2. Triangle not visible.
+      Camera issue. We need to set camera at corner of bounding box
+  3. Parsing is happening two times. First manually at backend and again at fronend by 3js. Avoid it at fronend. We directly parse it at backend and pass triangles only. 
+  4. We add id to each triangle ourselves so when clicked on frontend it gives that id. Id's are set by us.
+  5. For computing normals and storing:
+      For our cases when id' are 1,2,3 we can use vector but in production we might need to use Hashmap.
+      And at 10M and above hashmap starts breaking. also trade off between std::array and std::vector. For write once read heavy.
+  
 
 
 Q. what is stl? what exactly does it store?
@@ -49,14 +57,18 @@ A =>  A collection of flat triangles
 <<My intention of this project was to see how to work if I use it upto 1M triangles.
 How can I optimize storage and processing other heavy lifting of UI and parsing stl is done by LLM>>
 
-How do you compute surface area of a triangle mesh?
-Why does the cross product magnitude give triangle area?
+Q. How do you compute surface area of a triangle mesh? Why does the cross product magnitude give triangle area?
+A => For triangle with points A, B, C:
+      e1 = B - A
+      e2 = C - A
+      area = 0.5 * |e1 x e2|
+      Why it works:
+
+      |e1 x e2| gives area of the parallelogram formed by the two edges.
+      Triangle is half of that parallelogram.
+
 
 How do you compute volume of a closed mesh?
-Why does the signed tetrahedron method work?
-What happens if the mesh is not closed (not watertight)?
-What happens if triangle winding is inconsistent?
-<<For simplicity right now I have used STL which is water tight>>
 
 Float vs Double — what did you use and why?
 What numerical issues arise when coordinates are very large (1e6 scale)?
