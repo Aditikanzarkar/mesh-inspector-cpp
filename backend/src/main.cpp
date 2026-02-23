@@ -1,3 +1,4 @@
+#include <chrono>
 #include <exception>
 #include <iomanip>
 #include <iostream>
@@ -16,6 +17,8 @@ void printVertex(const Vector3& v) {
 }
 
 int main(int argc, char* argv[]) {
+    const auto startTime = std::chrono::steady_clock::now();
+
     if (argc < 2) {
         std::cerr << "Usage: mesh_inspector <path-to-stl-file>\n";
         return 1;
@@ -32,6 +35,9 @@ int main(int argc, char* argv[]) {
         std::cout << "triangles: " << triangles.size() << '\n';
         std::cout << "total area: " << area << '\n';
         std::cout << "estimated volume: " << volume << '\n';
+        const auto endTime = std::chrono::steady_clock::now();
+        const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+        std::cout << "runtime: " << elapsedMs << " ms\n";
         // for (std::size_t i = 0; i < triangles.size(); ++i) {
         //     const Triangle& t = triangles[i];
         //     std::cout << "triangle " << (i + 1) << ": ";
