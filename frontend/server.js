@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { promises as fs } from 'node:fs';
+import { createWriteStream, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,23 +31,63 @@ function sendJson(res, statusCode, payload) {
   res.end(body);
 }
 
-function collectRequestBody(req, maxBytes = 100 * 1024 * 1024) {
+function streamRequestToFile(req, filePath, maxBytes = 100 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
-    const chunks = [];
+    const writeStream = createWriteStream(filePath);
     let size = 0;
+    let settled = false;
 
-    req.on('data', (chunk) => {
+    const cleanup = () => {
+      req.off('data', onData);
+      req.off('end', onEnd);
+      req.off('error', onError);
+      req.off('aborted', onAborted);
+      writeStream.off('error', onError);
+      writeStream.off('finish', onFinish);
+    };
+
+    const finish = (err) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (err) reject(err);
+      else resolve(size);
+    };
+
+    const onData = (chunk) => {
       size += chunk.length;
       if (size > maxBytes) {
-        reject(new Error('Uploaded STL exceeds size limit (100MB).'));
+        writeStream.destroy();
         req.destroy();
-        return;
+        finish(new Error('Uploaded STL exceeds size limit (100MB).'));
       }
-      chunks.push(chunk);
-    });
+    };
 
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
+    const onEnd = () => {
+      writeStream.end();
+    };
+
+    const onAborted = () => {
+      writeStream.destroy();
+      finish(new Error('Request was aborted before upload completed.'));
+    };
+
+    const onError = (err) => {
+      finish(err);
+    };
+
+    const onFinish = () => {
+      finish();
+    };
+
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onError);
+    req.on('aborted', onAborted);
+    writeStream.on('error', onError);
+    writeStream.on('finish', onFinish);
+
+    req.pipe(writeStream, { end: false });
   });
 }
 
@@ -125,33 +165,35 @@ function runMeshInspector(executablePath, stlPath) {
 }
 
 async function handleMetricsApi(req, res) {
+  let tempPath = '';
+
   try {
-    const body = await collectRequestBody(req);
-    if (!body.length) {
+    const executablePath = await resolveExecutablePath();
+
+    const tempName = `mesh-inspector-${randomBytes(16).toString('hex')}.stl`;
+    tempPath = path.join('/tmp', tempName);
+
+    const uploadedBytes = await streamRequestToFile(req, tempPath);
+    if (!uploadedBytes) {
       sendJson(res, 400, { error: 'No STL content provided.' });
       return;
     }
 
-    const executablePath = await resolveExecutablePath();
-
-    const tempName = `mesh-inspector-${randomBytes(16).toString('hex')}.stl`;
-    const tempPath = path.join('/tmp', tempName);
-
+    const metrics = await runMeshInspector(executablePath, tempPath);
+    sendJson(res, 200, metrics);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to compute mesh metrics.';
+    const statusCode = message.includes('exceeds size limit') ? 413 : 500;
+    sendJson(res, statusCode, { error: message });
+  } finally {
+    if (!tempPath) return;
     try {
-      await fs.writeFile(tempPath, body);
-      const metrics = await runMeshInspector(executablePath, tempPath);
-      sendJson(res, 200, metrics);
-    } finally {
-      try {
-        await fs.unlink(tempPath);
-      } catch (unlinkErr) {
-        if (!unlinkErr || unlinkErr.code !== 'ENOENT') throw unlinkErr;
+      await fs.unlink(tempPath);
+    } catch (unlinkErr) {
+      if (!unlinkErr || unlinkErr.code !== 'ENOENT') {
+        console.error('Failed to clean up temp STL:', unlinkErr);
       }
     }
-  } catch (err) {
-    sendJson(res, 500, {
-      error: err instanceof Error ? err.message : 'Failed to compute mesh metrics.',
-    });
   }
 }
 

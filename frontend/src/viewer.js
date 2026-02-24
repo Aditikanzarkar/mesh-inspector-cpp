@@ -61,18 +61,18 @@ export function createViewer(container) {
     
     // ---- TRIANGLE EDGES ----
 
-    const wireframe = new THREE.WireframeGeometry(geometry);
+    // const wireframe = new THREE.WireframeGeometry(geometry);
 
-    const edgeMaterial = new THREE.LineBasicMaterial({
-      color: 0xff0000,      // make it obvious
-      opacity: 1,
-      depthTest: false,     // VERY IMPORTANT
-      depthWrite: false,
-    });
+    // const edgeMaterial = new THREE.LineBasicMaterial({
+    //   color: 0xff0000,      // make it obvious
+    //   opacity: 1,
+    //   depthTest: false,     // VERY IMPORTANT
+    //   depthWrite: false,
+    // });
     
-    triangleEdges = new THREE.LineSegments(wireframe, edgeMaterial);
-    triangleEdges.renderOrder = 1;   // force draw after mesh
-    triangleEdges.position.copy(mesh.position);
+    // triangleEdges = new THREE.LineSegments(wireframe, edgeMaterial);
+    // triangleEdges.renderOrder = 1;   // force draw after mesh
+    // triangleEdges.position.copy(mesh.position);
     
     //scene.add(triangleEdges);
     scene.add(mesh);

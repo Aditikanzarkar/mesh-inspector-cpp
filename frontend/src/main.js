@@ -14,6 +14,7 @@ bindUploader(
   async (buffer, name, file) => {
     setStatus(`Loading: ${name}`);
     setMetrics(null);
+    const parseStart = performance.now();
 
     try {
       viewer.setMeshFromArrayBuffer(buffer);
@@ -21,11 +22,21 @@ bindUploader(
       setStatus('Failed to parse STL.');
       return;
     }
+    const parseMs = Math.round(performance.now() - parseStart);
 
     try {
       const metrics = await fetchMeshMetrics(file);
       setMetrics(metrics);
-      setStatus(`Loaded: ${name}`);
+
+      const t = metrics.timingsMs;
+      if (t) {
+        setStatus(
+          `Loaded: ${name} | viewer ${parseMs}ms | api ${t.total}ms (read ${t.readUpload} / write ${t.writeTemp} / exe ${t.exeRun})`
+        );
+        console.log('mesh metrics timings (ms):', t);
+      } else {
+        setStatus(`Loaded: ${name}`);
+      }
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Failed to compute metrics.');
     }
