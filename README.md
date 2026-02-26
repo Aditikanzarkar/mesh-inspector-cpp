@@ -1,7 +1,7 @@
 # mesh-inspector-cpp
 C++ tool to find info about stl file. 3js for frotend. C++ for backend.
 
-## Quick run (Bazel-like)
+## Quick run (Bazel)
 Run build+execute in one command (rebuilds only when needed):
 
 ```bash
@@ -10,7 +10,6 @@ Run build+execute in one command (rebuilds only when needed):
 
 Optional env vars:
 - `TARGET` (default: `mesh_inspector`)
-- `BUILD_DIR` (default: `build`)
 
 Example:
 

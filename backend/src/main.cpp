@@ -7,7 +7,6 @@
 
 #include "core/Triangle.h"
 #include "geometry/AreaCalculator.h"
-#include "geometry/VolumeCalculator.h"
 #include "parser/STLParser.h"
 
 namespace {
@@ -29,7 +28,7 @@ int main(int argc, char* argv[]) {
     try {
         const std::vector<Triangle> triangles = STLParser::parseFile(filePath);
         const double area = AreaCalculator::totalArea(triangles);
-        const double volume = VolumeCalculator::estimateVolume(triangles);
+        const double volume = 0;//VolumeCalculator::estimateVolume(triangles);
 
         std::cout << std::fixed << std::setprecision(6);
         std::cout << "triangles: " << triangles.size() << '\n';
