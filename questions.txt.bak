@@ -1,3 +1,25 @@
+My goal with this was to create stl viewer but push it to extreme so that I can see how it starts breaking in terms of computation time and mesh viewer and how can I optimize it?
+I used LLM to do boilerplate and some common code generation and I focused on volume computation and viewer logic.
+flow of my projects is it will accept stl via frontend send it to my exe and it will compute area and volume.
+
+Q. why 3js
+    For visualization. Larger goal of project is user should be able to click on triangle in browser.
+    Right now I'm able to generate mesh and show it in browser but most heavy lifting is done by 3js
+    I want to do that manually to learn I have computed all edges and able to show them but it breaks beyond 500k.
+
+Q. what is stl? what exactly does it store?
+  It stores triangles only. 3 vertices and 1 normal. No topology. No units. No connectivity nothing very basic.
+    {
+      Q. Why normal?
+      A => Historical. Old machines did not have computer power to compute it again. Today's machine can.
+      Q. From 3 points you can define a plane but that plane can have two normals in opposite direction. How do you find then inside and outside of surface?
+      A => Winding Order Decides the Direction. 
+            If vertices are ordered:
+            Counter-clockwise (CCW) → normal points outward (by convention)
+            Clockwise (CW) → normal points inward
+            So orientation is not random — it depends on ordering.
+    }
+
 What problems you faced this projects? How you solved them
   1. Reading stl files. STL files is always 50 bytes for each triangle but creating it's struct makes it 52 bytes due to padding.
       So if you make struct like this
@@ -13,26 +35,18 @@ What problems you faced this projects? How you solved them
       then it will read 52 bytes into file instead of 50.
   2. Triangle not visible.
       Camera issue. We need to set camera at corner of bounding box
-  3. Parsing is happening two times. First manually at backend and again at fronend by 3js. Avoid it at fronend. We directly parse it at backend and pass triangles only. 
-  4. We add id to each triangle ourselves so when clicked on frontend it gives that id. Id's are set by us.
-  5. For computing normals and storing:
-      For our cases when id' are 1,2,3 we can use vector but in production we might need to use Hashmap.
-      And at 10M and above hashmap starts breaking. also trade off between std::array and std::vector. For write once read heavy.
-  
+  3. Parsing is happening two times. First manually at backend and again at fronend by 3js. Avoid it at fronend. We directly parse it at backend and pass triangles only.
+  4. Excessive vector reallocations. Used vector reserve instead of push_back
+  5. If you store map<edge, face> at starts to explode beyond 10M there are others solutions like flat_map and absil from google. I have not used them yet but because of this project I understood limitations of STL
+  {
+    4. We add id to each triangle ourselves so when clicked on frontend it gives that id. Id's are set by us.
+    5. For computing normals and storing:
+        For our cases when id' are 1,2,3 we can use vector but in production we might need to use Hashmap.
+        And at 10M and above hashmap starts breaking. also trade off between std::array and std::vector. For write once read heavy.
+  }
 
-
-Q. what is stl? what exactly does it store?
-  It stores triangles only. 3 vertices and 1 normal. No topology. No units. No connectivity nothing very basic.
-    Q. Why normal?
-    A => Historical. Old machines did not have computer power to compute it again. Today's machine can.
-    Q. From 3 points you can define a plane but that plane can have two normals in opposite direction. How do you find then inside and outside of surface?
-    A => Winding Order Decides the Direction. 
-          If vertices are ordered:
-          Counter-clockwise (CCW) → normal points outward (by convention)
-          Clockwise (CW) → normal points inward
-          So orientation is not random — it depends on ordering.
-
-Q. Types of STL ASCII vs Binary STL?
+{
+  Q. Types of STL ASCII vs Binary STL?
   ASCII STL: Human-readable text format.
   Binary STL: Much more compact and faster. (Most common)
     [80 bytes]   Header
@@ -48,14 +62,7 @@ Q. Types of STL ASCII vs Binary STL?
       For large files (millions of triangles):
       1. Use memory mapping (mmap)
       2. Or bulk read into buffer
-
-Q. What is the difference between triangle mesh (STL) and B-Rep modeling?
-A =>  A collection of flat triangles
-      Faces (surfaces), Edges (curves), Vertices (points). Easy to edit parametrically. It's needed for boolean operation.
-
-
-<<My intention of this project was to see how it would work if I use it upto 10M triangles.
-How can I optimize storage and processing other heavy lifting of UI and parsing stl is done by LLM>>
+}
 
 Q. How do you compute surface area of a triangle mesh? Why does the cross product magnitude give triangle area?
 A => For triangle with points A, B, C:
@@ -67,26 +74,58 @@ A => For triangle with points A, B, C:
       |e1 x e2| gives area of the parallelogram formed by the two edges.
       Triangle is half of that parallelogram.
 
+Q. How did you compute volume
+A = >
+so we first find bounding box for shape
+we find equidistant points inside that box on all 3 sides
+so now we know volume of box and if we can find how many percent of points are actually inside shape we can use that percent to get volume of shape (approx)
+so it now become problem of finding if given point is inside shape or not
+now for given point how we find if it's inside shape or not is by drawing arrow with point as origin if intersect at odd point then ouside otherwise inside
+but that mean I need to check every point with every triangle
+that is 1M vs 1M that's too much
+so what we do is we divide original bounding box into 8 small box and 8 small box and then in this way we can see if ray is intersecting any of that bounding only then we can use traingles from that box so this can work as tree with 8 nodes every time and we trave tree based on checking intersecting
+and once we find how many triangles it intersect we can decide if point is inside or outside and based on percentage of how many points are inside to toal points we get volume
 
-How do you compute volume of a closed mesh?
+GPT of above answer:
+To estimate the volume of an STL mesh, I used a Monte Carlo–style numerical method.
+First, I compute the axis-aligned bounding box of the mesh. That gives me a known volume region that fully contains the shape.
+Then I sample a large number of evenly distributed points inside that bounding box. Since I know the box volume, if I can determine what fraction of those points lie inside the mesh, I can approximate the mesh volume as:
+volume ≈ (inside_points / total_points) × bounding_box_volume.
+So the core problem becomes: how do we test whether a point lies inside the mesh?
+For that, I use ray casting. From each sample point, I shoot a ray in a fixed direction and count how many times it intersects the mesh surface. If the number of intersections is odd, the point is inside; if even, it’s outside.
+A naive implementation would check every ray against every triangle, which becomes too slow for large meshes. So I built a spatial acceleration structure — specifically an octree — by recursively subdividing the bounding box into smaller boxes. Each node stores only the triangles that intersect that region.
+During ray testing, I traverse only the relevant octree nodes, so instead of testing against all triangles, I test only a small subset. This reduces the complexity significantly and makes the method scalable up to around 1M triangles.
+Finally, based on the ratio of inside points, I compute the approximate volume.
 
-Float vs Double — what did you use and why?
-What numerical issues arise when coordinates are very large (1e6 scale)?
-How do you reduce floating-point accumulation error in volume summation?
+Q. How do you tets your solution
+A => I ran it against stand shape like sphere,cube,pyramid
 
-Time complexity of your area and volume computation?
-What is the memory footprint of 1M triangles?
-    Example thinking:
-    Each triangle:
-      3 vertices. Each vertex = 3 doubles (8 bytes each) = 3 × 3 × 8 = 72 bytes
-      normal (3 doubles = 24 bytes)
-      Total: ~96 bytes per triangle
-    1M triangles ≈ 96 MB
-    So if you store all the in vector and vector gets full. How that works? (how vector grows internally?)
-    Where this memory is stored. In RAM? how much RAM would it takes at 10M then?
+Q. Float vs Double — what did you use and why?
+A =>  For storing co-ordinates I used float to save memory
+      But for area and volume used double because if we are accumulating numbers and precision is not there solutions will change drastically over long terms
 
-How would you scale this to 100M triangles?
-  Streaming, Memory mapping, Parallelization
+Q. Time complexity of your area and volume computation?
+A =>  For area linear => no of triangle
+      For volume => no of points x log N
+  
+Q.  What is the memory footprint of 1M triangles?
+A =>  Example thinking:
+      Each triangle:
+        3 vertices. Each vertex = 3 doubles (8 bytes each) = 3 × 3 × 8 = 72 bytes
+        normal (3 doubles = 24 bytes)
+        Total: ~96 bytes per triangle
+      1M triangles ≈ 96 MB
+      So if you store all the in vector and vector gets full. How that works? (how vector grows internally?)
+      Where this memory is stored. In RAM? how much RAM would it takes at 10M then?
 
-why have you picked this project at this time time?
-what you learned about c++ vector can break
+Q. How would you scale this to 100M triangles?
+A =>  Streaming, Memory mapping, Parallelization
+
+Q. What is the difference between triangle mesh (STL) and B-Rep modeling?
+A =>  A collection of flat triangles
+      Faces (surfaces), Edges (curves), Vertices (points). Easy to edit parametrically. It's needed for boolean operation.
+
+A => So even today for 1M triangle it takes around 10sec for volume computation which is not best so that's why I build profiler
+Profiler currently works and it have found most time consuming methods are
+
+A => Again it's not most efficient solution my goal is to keep pushing just to see how much can I optimize it in single thread. 
