@@ -10,14 +10,13 @@
 #include "core/AABB.h"
 #include "core/Vector3.h"
 
-namespace {
+
 constexpr double kEpsilon = 1e-9;
 constexpr double kRayBarycentricEpsilon = 1e-8;
 constexpr std::size_t kMaxSamples = 800000;
 constexpr std::size_t kMinSamplesPerAxis = 6;
 constexpr std::size_t kMaxSamplesPerAxis = 140;
 
-namespace {
     struct OctreeNode {
     AABB bounds{};
     std::vector<std::size_t> triangleIndices;
@@ -175,7 +174,6 @@ namespace {
             outTriangles.insert(outTriangles.end(), node.triangleIndices.begin(), node.triangleIndices.end());
         }
     }
-}
 
 bool intersectRayTriangleStrict(
     const Vector3& origin,
@@ -282,7 +280,6 @@ bool pointInsideMesh(
 
     return (hitCount % 2) == 1;
 }
-}  // namespace
 
 double VolumeCalculator::estimateVolume(const std::vector<Triangle>& triangles) {
     if (triangles.empty()) {

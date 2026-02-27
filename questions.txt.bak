@@ -125,7 +125,36 @@ Q. What is the difference between triangle mesh (STL) and B-Rep modeling?
 A =>  A collection of flat triangles
       Faces (surfaces), Edges (curves), Vertices (points). Easy to edit parametrically. It's needed for boolean operation.
 
-A => So even today for 1M triangle it takes around 10sec for volume computation which is not best so that's why I build profiler
-Profiler currently works and it have found most time consuming methods are
-
 A => Again it's not most efficient solution my goal is to keep pushing just to see how much can I optimize it in single thread. 
+
+*******  MOST IMPORTANT QUESTION    ******
+What did you learn from profiler and how you improved your solution?
+A => So even today for 1M triangle it takes around 10 -15 sec for volume computation
+Reason is the current code is calling basic vector function too many times actually it's making 1 Billion calls (LOL!!!)
+We need to make this most frequent methods
+    => make small methods inline
+    => put them in header only file so cpp never gets involved
+    => Use operator overload if possible
+    => Avoid any temporary objection creation in methods everything should be via reference
+
+This seems very basic but once you hit bottle necks in production then you realize how to use them and then you will mostly never forget them in life !!!
+
+Final result
+main : 1 calls, 280226.204 ms total
+VolumeCalculator::estimateVolume(std::vector<Triangle, std::allocator<Triangle> > const&) : 1 calls, 279390.367 ms total
+pointInsideMesh(Vector3 const&, std::vector<Triangle, std::allocator<Triangle> > const&, std::vector<OctreeNode, std::allocator<OctreeNode> > const&, Vector3 const&, std::vector<unsigned int, std::allocator<unsigned int> >&, unsigned int) : 99452 calls, 274250.152 ms total
+intersectRayTriangleStrict(Vector3 const&, Vector3 const&, Triangle const&, double&) : 386471407 calls, 239748.801 ms total
+subtract(Vector3 const&, Vector3 const&) : 1160780344 calls, 51286.328 ms total
+dot(Vector3 const&, Vector3 const&) : 778673060 calls, 32110.309 ms total
+collectCandidateTriangles(std::vector<OctreeNode, std::allocator<OctreeNode> > const&, int, Vector3 const&, Vector3 const&, std::vector<unsigned long, std::allocator<unsigned long> >&) : 4678296 calls, 25403.374 ms total
+cross(Vector3 const&, Vector3 const&) : 392755361 calls, 17201.212 ms total
+buildOctreeRecursive(std::vector<OctreeNode, std::allocator<OctreeNode> >&, int, std::vector<AABB, std::allocator<AABB> > const&, OctreeConfig const&, unsigned long) : 1369 calls, 10428.123 ms total
+intersectRayAABB(Vector3 const&, Vector3 const&, AABB const&, double) : 4678296 calls, 5147.597 ms total
+buildOctree(std::vector<Triangle, std::allocator<Triangle> > const&, AABB const&) : 1 calls, 4711.876 ms total
+component(Vector3 const&, int) : 47662768 calls, 2170.208 ms total
+overlaps(AABB const&, AABB const&) : 32195768 calls, 1737.806 ms total
+triangleBounds(Triangle const&) : 1999396 calls, 593.558 ms total
+AreaCalculator::totalArea(std::vector<Triangle, std::allocator<Triangle> > const&) : 1 calls, 535.585 ms total
+AreaCalculator::triangleArea(Triangle const&) : 999698 calls, 481.683 ms total
+computeMeshBounds(std::vector<Triangle, std::allocator<Triangle> > const&) : 1 calls, 394.800 ms total
+STLParser::parseFile(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) : 1 calls, 292.702 ms total

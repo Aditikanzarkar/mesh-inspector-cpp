@@ -56,7 +56,11 @@ cc_binary(
         ":geometry",
         ":parser",
     ],
-    copts = COPTS
+    copts = COPTS,
+    linkopts = [
+        "-Wl,--export-dynamic",
+        "-ldl",
+    ],
 )
 
 cc_binary(

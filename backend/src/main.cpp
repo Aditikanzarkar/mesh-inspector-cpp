@@ -10,10 +10,9 @@
 #include "geometry/VolumeCalculator.h"
 #include "parser/STLParser.h"
 
-namespace {
+
 void printVertex(const Vector3& v) {
     std::cout << "(" << v.x << "," << v.y << "," << v.z << ")";
-}
 }
 
 int main(int argc, char* argv[]) {
