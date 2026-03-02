@@ -13,7 +13,6 @@ cc_library(
     name = "core",
     srcs = [
         "src/core/AABB.cpp",
-        "src/core/Vector3.cpp",
     ],
     hdrs = [
         "src/core/AABB.h",

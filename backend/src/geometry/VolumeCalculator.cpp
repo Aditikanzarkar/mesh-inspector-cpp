@@ -45,7 +45,7 @@ constexpr std::size_t kMaxSamplesPerAxis = 140;
     }
 
     std::array<AABB, 8> makeChildrenBounds(const AABB& bounds) {
-        const Vector3 center = scale(add(bounds.min, bounds.max), 0.5);
+        const Vector3 center = (bounds.min + bounds.max) * 0.5;
         std::array<AABB, 8> children{};
 
         for (int i = 0; i < 8; ++i) {
@@ -181,8 +181,8 @@ bool intersectRayTriangleStrict(
     const Triangle& tri,
     double& outT
 ) {
-    const Vector3 edge1 = subtract(tri.v2, tri.v1);
-    const Vector3 edge2 = subtract(tri.v3, tri.v1);
+    const Vector3 edge1 = tri.v2 - tri.v1;
+    const Vector3 edge2 = tri.v3 - tri.v1;
     const Vector3 pvec = cross(dir, edge2);
     const double det = dot(edge1, pvec);
 
@@ -191,7 +191,7 @@ bool intersectRayTriangleStrict(
     }
     const double invDet = 1.0 / det;
 
-    const Vector3 tvec = subtract(origin, tri.v1);
+    const Vector3 tvec = origin - tri.v1;
     const double u = dot(tvec, pvec) * invDet;
     if (u <= kRayBarycentricEpsilon || u >= (1.0 - kRayBarycentricEpsilon)) {
         return false;

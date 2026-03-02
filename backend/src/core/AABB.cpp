@@ -27,7 +27,7 @@ bool overlaps(const AABB& a, const AABB& b) {
 }
 
 Vector3 boundsExtent(const AABB& bounds) {
-    return subtract(bounds.max, bounds.min);
+    return bounds.max - bounds.min;
 }
 
 double boundsVolume(const AABB& bounds) {
