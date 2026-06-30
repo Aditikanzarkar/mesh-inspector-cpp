@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createWriteStream, promises as fs } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -112,22 +113,31 @@ async function resolveExecutablePath() {
     return process.env.MESH_INSPECTOR_EXE;
   }
 
-  const candidates = [
-    path.resolve(__dirname, '..', 'build', 'backend', 'mesh_inspector'),
-    path.resolve(__dirname, '..', 'build', 'mesh_inspector'),
+  const repoRoot = path.resolve(__dirname, '..');
+  const candidateDirs = [
+    path.join(repoRoot, 'bazel-bin', 'backend'),
+    path.join(repoRoot, 'bazel-bin'),
+    path.join(repoRoot, 'build', 'backend'),
+    path.join(repoRoot, 'build'),
   ];
+  const executableNames = process.platform === 'win32'
+    ? ['mesh_inspector.exe', 'mesh_inspector']
+    : ['mesh_inspector'];
 
-  for (const candidate of candidates) {
-    try {
-      await fs.access(candidate);
-      return candidate;
-    } catch {
-      // Continue trying candidates.
+  for (const dir of candidateDirs) {
+    for (const name of executableNames) {
+      const candidate = path.join(dir, name);
+      try {
+        await fs.access(candidate);
+        return candidate;
+      } catch {
+        // Continue trying candidates.
+      }
     }
   }
 
   throw new Error(
-    'mesh_inspector executable not found. Build it with: ./scripts/build.sh mesh_inspector'
+    'mesh_inspector executable not found. Build it with: bazel build //backend:mesh_inspector'
   );
 }
 
@@ -171,7 +181,7 @@ async function handleMetricsApi(req, res) {
     const executablePath = await resolveExecutablePath();
 
     const tempName = `mesh-inspector-${randomBytes(16).toString('hex')}.stl`;
-    tempPath = path.join('/tmp', tempName);
+    tempPath = path.join(os.tmpdir(), tempName);
 
     const uploadedBytes = await streamRequestToFile(req, tempPath);
     if (!uploadedBytes) {

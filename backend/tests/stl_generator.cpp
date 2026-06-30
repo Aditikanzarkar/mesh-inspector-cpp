@@ -41,7 +41,13 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    uint64_t requestedTriangles = std::stoull(argv[1]);
+    uint64_t requestedTriangles = 0;
+    try {
+        requestedTriangles = static_cast<uint64_t>(std::strtoull(argv[1], nullptr, 10));
+    } catch (...) {
+        std::cerr << "Invalid triangle count: " << argv[1] << "\n";
+        return 1;
+    }
     const char* filename = argv[2];
 
     double radius = 50.0;  // 100m diameter

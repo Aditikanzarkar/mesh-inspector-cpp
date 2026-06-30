@@ -2,14 +2,30 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
-COPTS = [
-    "-std=c++17",
-    "-O0",
-    "-g",
-    "-finstrument-functions",
-    "-finstrument-functions-exclude-file-list=/usr/include,/usr/lib",
-    "-fno-omit-frame-pointer",
-]
+COPTS = select({
+    "@platforms//os:windows": [
+        "/std:c++17",
+        "/Od",
+        "/Z7",
+        "/FS",
+    ],
+    "//conditions:default": [
+        "-std=c++17",
+        "-O0",
+        "-g",
+        "-finstrument-functions",
+        "-finstrument-functions-exclude-file-list=/usr/include,/usr/lib",
+        "-fno-omit-frame-pointer",
+    ],
+})
+
+LINKOPTS = select({
+    "@platforms//os:windows": [],
+    "//conditions:default": [
+        "-Wl,--export-dynamic",
+        "-ldl",
+    ],
+})
 
 cc_library(
     name = "core",
@@ -58,10 +74,7 @@ cc_binary(
         ":parser",
     ],
     copts = COPTS,
-    linkopts = [
-        "-Wl,--export-dynamic",
-        "-ldl",
-    ],
+    linkopts = LINKOPTS,
 )
 
 cc_binary(
