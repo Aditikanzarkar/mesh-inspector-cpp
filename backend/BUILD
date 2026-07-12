@@ -24,6 +24,7 @@ LINKOPTS = select({
     "//conditions:default": [
         "-Wl,--export-dynamic",
         "-ldl",
+        "-pthread",
     ],
 })
 
@@ -96,9 +97,11 @@ cc_test(
 cc_test(
     name = "test_volume",
     srcs = ["tests/test_volume.cpp"],
+    data = [":stl_generator"],
     deps = [
         ":core",
         ":geometry",
+        ":parser",
     ],
     copts = COPTS,
 )

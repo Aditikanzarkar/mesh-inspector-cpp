@@ -18,5 +18,7 @@ Example:
 ./scripts/run.sh test_area
 ./scripts/run.sh -- sphere.stl
 ```
+How to use:
+bazel run //backend:stl_generator -- 1000000 file_path\sphere.stl
 
 https://chatgpt.com/share/699200dd-5fb8-8013-8c03-7787fd8fdfe4

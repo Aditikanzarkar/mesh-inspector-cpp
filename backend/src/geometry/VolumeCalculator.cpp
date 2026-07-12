@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <thread>
 #include <vector>
 
 #include "core/AABB.h"
@@ -305,31 +306,71 @@ double VolumeCalculator::estimateVolume(const std::vector<Triangle>& triangles) 
     const std::vector<OctreeNode> octree = buildOctree(triangles, bounds);
     const Vector3 rayDir = normalize(Vector3{1.0, 0.371, 0.529}, kEpsilon);
 
-    std::vector<std::uint32_t> visitedStamp(triangles.size(), 0);
-    std::uint32_t stamp = 1;
+    const std::size_t totalSamples = nx * ny * nz;
+    if (totalSamples == 0) {
+        return 0.0;
+    }
 
-    std::size_t insideCount = 0;
-    std::size_t totalCount = 0;
+    const unsigned int hardwareThreads = std::max(1u, std::thread::hardware_concurrency());
+    const std::size_t threadCount = std::min<std::size_t>(8, std::min<std::size_t>(totalSamples, static_cast<std::size_t>(hardwareThreads)));
+    const std::size_t samplesPerThread = (totalSamples + threadCount - 1) / threadCount;
 
-    for (std::size_t ix = 0; ix < nx; ++ix) {
-        const double x = bounds.min.x + (static_cast<double>(ix) + 0.5) * dx;
-        for (std::size_t iy = 0; iy < ny; ++iy) {
-            const double y = bounds.min.y + (static_cast<double>(iy) + 0.5) * dy;
-            for (std::size_t iz = 0; iz < nz; ++iz) {
+    struct ThreadResult {
+        std::size_t insideCount = 0;
+        std::size_t totalCount = 0;
+    };
+
+    std::vector<ThreadResult> results(threadCount);
+    std::vector<std::thread> workers;
+    workers.reserve(threadCount);
+
+    for (std::size_t threadIndex = 0; threadIndex < threadCount; ++threadIndex) {
+        const std::size_t begin = threadIndex * samplesPerThread;
+        const std::size_t end = std::min(totalSamples, begin + samplesPerThread);
+        if (begin >= end) {
+            continue;
+        }
+
+        workers.emplace_back([&, threadIndex, begin, end]() {
+            ThreadResult localResult{};
+            std::vector<std::uint32_t> visitedStamp(triangles.size(), 0);
+            std::uint32_t stamp = 1;
+
+            for (std::size_t sampleIndex = begin; sampleIndex < end; ++sampleIndex) {
+                const std::size_t ix = sampleIndex / (ny * nz);
+                const std::size_t remainder = sampleIndex % (ny * nz);
+                const std::size_t iy = remainder / nz;
+                const std::size_t iz = remainder % nz;
+
+                const double x = bounds.min.x + (static_cast<double>(ix) + 0.5) * dx;
+                const double y = bounds.min.y + (static_cast<double>(iy) + 0.5) * dy;
                 const double z = bounds.min.z + (static_cast<double>(iz) + 0.5) * dz;
                 const Vector3 point{x, y, z};
 
                 if (pointInsideMesh(point, triangles, octree, rayDir, visitedStamp, stamp)) {
-                    ++insideCount;
+                    ++localResult.insideCount;
                 }
-                ++totalCount;
+                ++localResult.totalCount;
                 ++stamp;
                 if (stamp == 0) {
                     std::fill(visitedStamp.begin(), visitedStamp.end(), 0);
                     stamp = 1;
                 }
             }
-        }
+
+            results[threadIndex] = localResult;
+        });
+    }
+
+    for (std::thread& worker : workers) {
+        worker.join();
+    }
+
+    std::size_t insideCount = 0;
+    std::size_t totalCount = 0;
+    for (const ThreadResult& result : results) {
+        insideCount += result.insideCount;
+        totalCount += result.totalCount;
     }
 
     if (totalCount == 0) {
