@@ -38,6 +38,7 @@ cc_library(
         "src/core/Triangle.h",
         "src/core/Vector3.h",
         "src/core/ThreadPool.h",
+        "src/core/MemoryPool.h",
     ],
     includes = ["src"],
     copts = COPTS,
@@ -110,6 +111,13 @@ cc_test(
 cc_test(
     name = "test_thread_pool",
     srcs = ["tests/test_thread_pool.cpp"],
+    deps = [":core"],
+    copts = COPTS,
+)
+
+cc_test(
+    name = "test_memory_pool",
+    srcs = ["tests/test_memory_pool.cpp"],
     deps = [":core"],
     copts = COPTS,
 )

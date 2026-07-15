@@ -8,6 +8,7 @@
 #include <memory>
 #include <stdexcept>
 #include <thread>
+#include "core/MemoryPool.h"
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -16,19 +17,32 @@ namespace detail {
 
 class LockFreeQueue {
 public:
-    LockFreeQueue() : head_(new Node()), tail_(head_.load(std::memory_order_relaxed)) {
+    struct Node {
+        std::function<void()> task;
+        std::atomic<Node*> next;
+
+        Node() : next(nullptr) {}
+    };
+
+    static std::size_t nodeSize() {
+        return sizeof(Node);
+    }
+
+    explicit LockFreeQueue(MemoryPool* pool = nullptr)
+        : pool_(pool), head_(allocateNode()), tail_(head_.load(std::memory_order_relaxed)) {
     }
 
     ~LockFreeQueue() {
         std::function<void()> ignored;
         while (tryPop(ignored)) {
         }
-        delete head_.load(std::memory_order_relaxed);
     }
 
     template <typename F>
     void push(F&& task) {
-        auto* node = new Node{std::forward<F>(task), nullptr};
+        Node* node = allocateNode();
+        node->task = std::forward<F>(task);
+        node->next.store(nullptr, std::memory_order_relaxed);
 
         for (;;) {
             Node* tail = tail_.load(std::memory_order_relaxed);
@@ -65,7 +79,6 @@ public:
                     if (head_.compare_exchange_weak(head, next, std::memory_order_release, std::memory_order_relaxed)) {
                         outTask = std::move(next->task);
                         next->task = {};
-                        delete head;
                         return true;
                     }
                 }
@@ -74,16 +87,29 @@ public:
     }
 
 private:
-    struct Node {
-        std::function<void()> task;
-        std::atomic<Node*> next;
-
-        Node() : next(nullptr) {}
-        explicit Node(std::function<void()>&& taskValue, Node* nextValue)
-            : task(std::move(taskValue)), next(nextValue) {
+    Node* allocateNode() {
+        if (pool_ != nullptr) {
+            void* storage = pool_->allocate();
+            if (storage != nullptr) {
+                return new (storage) Node();
+            }
         }
-    };
+        return new Node();
+    }
 
+    void releaseNode(Node* node) {
+        if (node == nullptr) {
+            return;
+        }
+        if (pool_ != nullptr) {
+            node->~Node();
+            pool_->deallocate(node);
+            return;
+        }
+        delete node;
+    }
+
+    MemoryPool* pool_;
     std::atomic<Node*> head_;
     std::atomic<Node*> tail_;
 };
@@ -93,7 +119,7 @@ private:
 class ThreadPool {
 public:
     explicit ThreadPool(std::size_t threadCount = 1)
-        : stop_(false), pendingTasks_(0) {
+        : stop_(false), pendingTasks_(0), taskPool_(detail::LockFreeQueue::nodeSize(), 4096) {
         const std::size_t workerCount = std::max<std::size_t>(1, threadCount);
         workers_.reserve(workerCount);
         for (std::size_t i = 0; i < workerCount; ++i) {
@@ -144,7 +170,8 @@ public:
 
 private:
     std::vector<std::thread> workers_;
-    detail::LockFreeQueue tasks_;
+    MemoryPool taskPool_;
+    detail::LockFreeQueue tasks_{&taskPool_};
     std::atomic<bool> stop_;
     std::atomic<std::size_t> pendingTasks_;
 };
