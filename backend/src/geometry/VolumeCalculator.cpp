@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "core/AABB.h"
+#include "core/ThreadPool.h"
 #include "core/Vector3.h"
 
 
@@ -320,9 +321,9 @@ double VolumeCalculator::estimateVolume(const std::vector<Triangle>& triangles) 
         std::size_t totalCount = 0;
     };
 
-    std::vector<ThreadResult> results(threadCount);
-    std::vector<std::thread> workers;
-    workers.reserve(threadCount);
+    ThreadPool pool(threadCount);
+    std::vector<std::future<ThreadResult>> futures;
+    futures.reserve(threadCount);
 
     for (std::size_t threadIndex = 0; threadIndex < threadCount; ++threadIndex) {
         const std::size_t begin = threadIndex * samplesPerThread;
@@ -331,7 +332,7 @@ double VolumeCalculator::estimateVolume(const std::vector<Triangle>& triangles) 
             continue;
         }
 
-        workers.emplace_back([&, threadIndex, begin, end]() {
+        futures.emplace_back(pool.enqueue([&, begin, end]() -> ThreadResult {
             ThreadResult localResult{};
             std::vector<std::uint32_t> visitedStamp(triangles.size(), 0);
             std::uint32_t stamp = 1;
@@ -358,17 +359,14 @@ double VolumeCalculator::estimateVolume(const std::vector<Triangle>& triangles) 
                 }
             }
 
-            results[threadIndex] = localResult;
-        });
-    }
-
-    for (std::thread& worker : workers) {
-        worker.join();
+            return localResult;
+        }));
     }
 
     std::size_t insideCount = 0;
     std::size_t totalCount = 0;
-    for (const ThreadResult& result : results) {
+    for (std::future<ThreadResult>& future : futures) {
+        const ThreadResult result = future.get();
         insideCount += result.insideCount;
         totalCount += result.totalCount;
     }

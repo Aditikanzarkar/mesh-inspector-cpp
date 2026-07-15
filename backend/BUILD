@@ -37,6 +37,7 @@ cc_library(
         "src/core/AABB.h",
         "src/core/Triangle.h",
         "src/core/Vector3.h",
+        "src/core/ThreadPool.h",
     ],
     includes = ["src"],
     copts = COPTS,
@@ -103,5 +104,12 @@ cc_test(
         ":geometry",
         ":parser",
     ],
+    copts = COPTS,
+)
+
+cc_test(
+    name = "test_thread_pool",
+    srcs = ["tests/test_thread_pool.cpp"],
+    deps = [":core"],
     copts = COPTS,
 )
