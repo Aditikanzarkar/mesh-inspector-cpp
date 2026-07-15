@@ -81,6 +81,21 @@ cc_binary(
 )
 
 cc_binary(
+    name = "grpc_server",
+    srcs = [
+        "src/grpc_server.cpp",
+        "src/grpc_service.h",
+    ],
+    deps = [
+        ":core",
+        ":geometry",
+        ":parser",
+    ],
+    copts = COPTS,
+    linkopts = LINKOPTS,
+)
+
+cc_binary(
     name = "stl_generator",
     srcs = ["tests/stl_generator.cpp"],
     copts = COPTS,
@@ -103,6 +118,16 @@ cc_test(
     deps = [
         ":core",
         ":geometry",
+        ":parser",
+    ],
+    copts = COPTS,
+)
+
+cc_test(
+    name = "test_parser",
+    srcs = ["tests/test_parser.cpp"],
+    deps = [
+        ":core",
         ":parser",
     ],
     copts = COPTS,

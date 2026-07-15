@@ -121,9 +121,51 @@ std::vector<Triangle> parseAsciiSTL(const std::string& filePath) {
 }
 }  // namespace
 
+namespace {
+std::vector<Triangle> parseAsciiFromStream(std::istream& input, const std::string& sourceName) {
+    std::vector<Triangle> triangles;
+    std::vector<Vector3> vertices;
+    vertices.reserve(3);
+
+    std::string line;
+    while (std::getline(input, line)) {
+        std::istringstream lineStream(line);
+        std::string token;
+        lineStream >> token;
+
+        if (token != "vertex") {
+            continue;
+        }
+
+        Vector3 v;
+        lineStream >> v.x >> v.y >> v.z;
+        if (!lineStream) {
+            throw std::runtime_error("Invalid vertex line in ASCII STL: " + line);
+        }
+
+        vertices.push_back(v);
+        if (vertices.size() == 3) {
+            triangles.push_back(Triangle{vertices[0], vertices[1], vertices[2]});
+            vertices.clear();
+        }
+    }
+
+    if (!vertices.empty()) {
+        throw std::runtime_error("ASCII STL has incomplete triangle vertex data in " + sourceName);
+    }
+
+    return triangles;
+}
+}  // namespace
+
 std::vector<Triangle> STLParser::parseFile(const std::string& filePath) {
     if (isLikelyBinarySTL(filePath)) {
         return parseBinarySTL(filePath);
     }
     return parseAsciiSTL(filePath);
+}
+
+std::vector<Triangle> STLParser::parseFromMemory(const std::string& fileData, const std::string& fileName) {
+    std::istringstream stream(fileData);
+    return parseAsciiFromStream(stream, fileName);
 }
